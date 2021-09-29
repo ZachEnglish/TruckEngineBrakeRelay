@@ -1,11 +1,7 @@
-
 #define TACH_PIN 2
+#define RELAY_PIN 5
 
 #include <Tachometer.h>
-
-//YWROBOT
-//Compatible with the Arduino IDE 1.0
-//Library version:1.1
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -16,55 +12,46 @@ Tachometer tacho;
 
 void setup()
 {
-  lcd.init();                      // initialize the lcd
   lcd.init();
   // Print a message to the LCD.
   lcd.backlight();
-  lcd.setCursor(3, 0);
-  lcd.print("Hello, world!");
-  lcd.setCursor(2, 1);
-  lcd.print("Ywrobot Arduino!");
-  lcd.setCursor(0, 2);
-  lcd.print("Arduino LCM IIC 2004");
-  lcd.setCursor(2, 3);
-  lcd.print("Power By Ec-yuan!");
-
+  
   pinMode(TACH_PIN, INPUT_PULLUP);
-  pinMode(5, OUTPUT);
-  attachInterrupt(0, isr, FALLING);
+  pinMode(RELAY_PIN, OUTPUT);
+  attachInterrupt(0, isr, FALLING); //This allows the Tachometer library to calculate the frequency of the incoming signal
 }
 
 void isr() {
-  tacho.tick();   // сообщаем библиотеке об этом
+  tacho.tick();
 }
 
 void loop()
 {
   static uint32_t tmr;
-  float herts;
-  bool on;
+  float hz;
+  bool is_it_on;
 
   if (millis() - tmr > 1000) {
     tmr = millis();
-    herts = tacho.getHz();
-    on = set_relay_based_on_herts(herts);
+    hz = tacho.getHz();
+    is_it_on = set_relay_based_on_herts(hz);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Hz: ");
-    lcd.print(herts);
+    lcd.print(hz);
     lcd.setCursor(0, 1);
     lcd.print("Relay: ");
-    lcd.print( (on?"ON":"OFF"));
+    lcd.print( (is_it_on?"ON":"OFF"));
   }
 }
 
 bool set_relay_based_on_herts(float hz){
     if (hz > 1000) {
-      digitalWrite(5, LOW);
+      digitalWrite(RELAY_PIN, LOW);
       return true;
     }
     else {
-      digitalWrite(5, HIGH);
+      digitalWrite(RELAY_PIN, HIGH);
       return false;
     }
 }
