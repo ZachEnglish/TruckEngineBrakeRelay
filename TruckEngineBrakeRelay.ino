@@ -6,8 +6,8 @@
 #define TACH_PIN 2
 #define RELAY_PIN 5
 #define ROTARY_SWITCH 6
-#define ROTARY_A 7
-#define ROTARY_B 8
+#define ROTARY_A 8
+#define ROTARY_B 7
 
 #include <Tachometer.h>
 #include <Wire.h>
@@ -19,6 +19,7 @@ Tachometer tacho;
 
 int g_rotary_value = 0;
 int g_current_setting = 0;
+bool g_screenValuesChanged;
 
 void setup()
 {
@@ -36,14 +37,27 @@ void setup()
   attachPinChangeInterrupt(digitalPinToPCINT(ROTARY_A), rotaryEncoderIsr, RISING);
   attachPinChangeInterrupt(digitalPinToPCINT(ROTARY_B), rotaryEncoderIsr, RISING);
   attachPinChangeInterrupt(digitalPinToPCINT(ROTARY_SWITCH), rotarySwitchIsr, RISING);
+
+  g_screenValuesChanged = true;
 }
 
 void isr() {
   tacho.tick();
+  unsigned long nowTime = millis();
+  static unsigned long lastTime;
+  unsigned long tmr;
+
+  tmr = nowTime - lastTime;
+
+  if (tmr > 3000)
+    g_screenValuesChanged = true;
+  lastTime = nowTime;
 }
 
 void rotarySwitchIsr() {
   g_current_setting++;
+
+  g_screenValuesChanged = true; //tell arduino that these values have changed
 
   if (g_current_setting > 5)
     g_current_setting = 0;
@@ -51,12 +65,10 @@ void rotarySwitchIsr() {
 
 void loop()
 {
-  static uint32_t tmr;
   float hz;
   bool is_it_on;
 
-  if (millis() - tmr > 1000) {
-    tmr = millis();
+  if (g_screenValuesChanged == true) {
     hz = tacho.getHz();
     is_it_on = set_relay_based_on_herts(hz);
     lcd.clear();
@@ -70,7 +82,8 @@ void loop()
     lcd.print(g_rotary_value);
     lcd.print(":");
     lcd.print(g_current_setting);
-    
+    g_screenValuesChanged = false; //tell arduino that we have displayed latest info
+
   }
 }
 
@@ -121,6 +134,14 @@ static void rotaryEncoderIsr()
         else
           g_rotary_value -= increment;
       }
+      if (g_rotary_value > 5) //loop rotary encoder value from 0 to 5 and visa versa
+      {
+        g_rotary_value = 0;
+      }
+      if (g_rotary_value < 0)
+      {
+        g_rotary_value = 5;
+      }
       ready = false;
     }  // end of being ready
   }  // end of completed click
@@ -129,4 +150,6 @@ static void rotaryEncoderIsr()
 
   pinA = newPinA;
   pinB = newPinB;
+
+  g_screenValuesChanged = true; //tell arduino that the rotary values have been changed
 }
